@@ -256,6 +256,42 @@ class Mbank
 		return $accounts;
 	}
 
+    public function jsonOperations($iban, $pageNumber)
+	{
+        $pfmProducts = $this->curl(array(CURLOPT_URL => $this->url . '/'.$this->countryCode.'//Pfm/HistoryApi/GetPfmInitialData?shouldOverWriteFilters=true'));
+        $pfmProducts = $pfmProducts['pfmProducts'];
+        $search = array_search(str_replace(' ', null, $iban), array_column($pfmProducts, 'contractNumber'));
+        $pfm = $pfmProducts[$search];
+
+        $response = $this->curl(array(
+            CURLOPT_URL => $this->url . '/'.$this->countryCode.'/Pfm/HistoryApi/GetOperationsPfm?productIds=' . $pfm['id'] . '&PageNumber=' . $pageNumber
+        ));
+
+        $details = array();
+
+        foreach($response['transactions'] as $i => $tx) {
+            if ($tx['description'] === 'mTransfer') {
+                $url = implode(null, array(
+                    $this->url . '/'.$this->countryCode,
+                    '/HistoryApi/GetDetails?accountNumber=' . $pfm['contractAlias'],
+                    '&operationNumber=' . $tx['operationNumber'],
+                    '&operationType=' . $tx['operationType'],
+                    '&pfmId=' . $tx['pfmId']
+                ));
+
+                $details[] = $this->curl(array(CURLOPT_URL =>  $url));
+            }
+        }
+
+        foreach($response['transactions'] as $i => $tx) {
+            if (array_key_exists($i, $details)) {
+                $response['transactions'][$i]['details'] = $details;
+            }
+        }
+
+        return $response;
+	}
+
 	/**
 	 * Lists account operations
 	 *
