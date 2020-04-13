@@ -264,32 +264,29 @@ class Mbank
         $pfm = $pfmProducts[$search];
 
         $response = $this->curl(array(
-            CURLOPT_URL => $this->url . '/'.$this->countryCode.'/Pfm/HistoryApi/GetOperationsPfm?productIds=' . $pfm['id'] . '&PageNumber=' . $pageNumber
+            CURLOPT_URL =>
+                $this->url .
+                '/'.$this->countryCode.
+                '/Pfm/HistoryApi/GetOperationsPfm?productIds=' . $pfm['id'] .
+                '&PageNumber=' . $pageNumber .
+                '&showIrrelevantTransactions=true&showSavingsAndInvestments=true'
         ));
-
-        $details = array();
 
         foreach($response['transactions'] as $i => $tx) {
             if ($tx['description'] === 'mTransfer') {
                 $url = implode(null, array(
                     $this->url . '/'.$this->countryCode,
-                    '/HistoryApi/GetDetails?accountNumber=' . $pfm['contractAlias'],
+                    '/HistoryApi/GetDetails?accountNumber=' . urlencode($pfm['contractAlias']),
                     '&operationNumber=' . $tx['operationNumber'],
                     '&operationType=' . $tx['operationType'],
                     '&pfmId=' . $tx['pfmId']
                 ));
 
-                $details[] = $this->curl(array(CURLOPT_URL =>  $url));
+                $response['transactions'][$i]['details'] = $this->curl(array(CURLOPT_URL =>  $url));
             }
         }
 
-        foreach($response['transactions'] as $i => $tx) {
-            if (array_key_exists($i, $details)) {
-                $response['transactions'][$i]['details'] = $details;
-            }
-        }
-
-        return $response;
+        return $response['transactions'];
 	}
 
 	/**
